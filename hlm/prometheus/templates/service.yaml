@@ -1,0 +1,19 @@
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  labels:
+    component: "server"
+    metrics: "prometheus"
+  name: "{{ .Release.Name }}"
+  namespace: "{{ .Release.Namespace }}"
+spec:
+  ports:
+    - name: "http"
+      port: 9090
+      protocol: "TCP"
+      targetPort: 9090
+  selector:
+    component: "server"
+    metrics: "prometheus"
+  sessionAffinity: "None"
+  type: "ClusterIP"

@@ -1,0 +1,52 @@
+apiVersion: "networking.istio.io/v1beta1"
+kind: "VirtualService"
+metadata:
+  name: "{{ .Release.Name }}"
+  labels:
+    app.kubernetes.io/name: "{{ .Release.Name }}"
+spec:
+  gateways:
+    - "istio-system/ingressgateway"
+  hosts:
+    {{- if and ( .Values.dns ) ( .Values.dns.cname ) }}
+    # In a remote setup using eks we can forward traffic based on a pretty
+    # shortcut domain, if any.
+    #
+    #     app.example.com
+    #
+    - "{{ .Values.dns.cname }}"
+    {{- end }}
+    {{- if and ( .Values.cluster ) ( .Values.cluster.name ) ( .Values.cluster.zone ) }}
+    # In a remote setup using eks the istio ingress gateway forwards traffic
+    # based on wildcard expressions of a hosted zone. In our virtual service
+    # here we define the specific subdomain of our micro service according to
+    # the cluster name and DNS zone.
+    #
+    #     prometheus.kia02.aws.example.com
+    #
+    - "{{ .Release.Name }}.{{ .Values.cluster.name }}.{{ .Values.cluster.zone }}"
+    {{- else }}
+    # In a local setup using kind the istio ingress gateway forwards traffic
+    # based on wildcard expressions matching everything. In our virtual service
+    # here we do the same and just accept traffic for any host.
+    - "*"
+    {{- end }}
+  http:
+    - match:
+        {{- if and ( .Values.cluster ) ( .Values.cluster.name ) ( .Values.cluster.zone ) }}
+        # In a remote setup using eks the istio ingress gateway forwards traffic
+        # based on wildcard expressions of a hosted zone. In our virtual service
+        # here thus can just match for the default HTTPS port.
+        - port: 443
+        {{- else }}
+        # In a local setup using kind the istio ingress gateway forwards traffic
+        # based on the port forwarding configured in the kind cluster. In our
+        # virtual service here we do match traffic based on this port in order
+        # to do proper routing when everything comes from localhost.
+        - port: 30009
+        {{- end }}
+      route:
+        - destination:
+            host: "{{ .Release.Name }}"
+            port:
+              number: {{ .Values.prometheus.port }}
