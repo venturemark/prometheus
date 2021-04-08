@@ -1,7 +1,5 @@
 cluster:
   name: ""
   zone: ""
-dns:
-  cname: ""
 prometheus:
   port: 9090
